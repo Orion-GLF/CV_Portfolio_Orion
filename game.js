@@ -4,7 +4,7 @@ import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/cont
 console.log("game.js chargé");
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+scene.background = new THREE.Color(0x080a0f);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
@@ -124,8 +124,14 @@ function createAstronaut(x, y, z) {
   });
 
   const visorMat = new THREE.MeshPhongMaterial({
-    color: 0x243b55,
+    color: 0x000000,
     shininess: 180,
+    specular: 0xffffff
+  });
+
+  const antennaMat = new THREE.MeshPhongMaterial({
+    color: 0xb3202a,
+    shininess: 120,
     specular: 0xffffff
   });
 
@@ -173,7 +179,7 @@ function createAstronaut(x, y, z) {
     return line;
   }
 
-  // CASQUE
+  // casque
   addMesh(
     new THREE.SphereGeometry(0.36, 32, 32),
     suitMat,
@@ -204,27 +210,28 @@ function createAstronaut(x, y, z) {
     0, 3, -0.24
   );
 
+  // boule de l'antenne
   addMesh(
     new THREE.SphereGeometry(0.045, 16, 16),
-    suitMat,
+    antennaMat,
     -0.0225, 2.24, -0.09
   );
 
-  // TORSE simple
+  // torse
   addMesh(
     new THREE.CylinderGeometry(0.22, 0.24, 0.72, 24),
     suitMat,
     0, 1.13, 0
   );
 
-  // bassin sobre, pas une boule
+  // bassin 
   addMesh(
     new THREE.CylinderGeometry(0.23, 0.20, 0.22, 20),
     suitMat,
     0, 0.72, 0
   );
 
-  // SAC
+  // sac à dos
   addMesh(
     new THREE.BoxGeometry(0.27, 0.42, 0.16),
     suitMat,
@@ -238,11 +245,11 @@ function createAstronaut(x, y, z) {
   packLine.position.set(-0.03, 1.30, -0.26);
   astronaut.add(packLine);
 
-  // BRAS plus proches du dessin
+  // bras
   function addArm(side) {
     const s = side;
 
-    // épaule
+    // épaules
     addMesh(
       new THREE.SphereGeometry(0.11, 18, 18),
       suitMat,
@@ -278,11 +285,11 @@ function createAstronaut(x, y, z) {
   addArm(-1);
   addArm(1);
 
-  // JAMBES plus droites
+  // jambes
   function addLeg(side) {
     const s = side;
 
-    // cuisse
+    // cuisses
     addMesh(
       new THREE.CylinderGeometry(0.10, 0.105, 0.38, 18),
       suitMat,
@@ -296,7 +303,7 @@ function createAstronaut(x, y, z) {
       0.11 * s, 0.04, 0
     );
 
-    // pied discret
+    // pied
     addMesh(
       new THREE.SphereGeometry(0.085, 18, 18),
       suitMat,
