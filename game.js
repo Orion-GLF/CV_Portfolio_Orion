@@ -30,6 +30,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+const terrainBlocks = [];
+
 function createBlock(x, y, z) {
   const geometry = new THREE.BoxGeometry(1, 1, 1);
 
@@ -45,6 +47,203 @@ function createBlock(x, y, z) {
   );
   line.position.set(x, y, z);
   scene.add(line);
+
+  terrainBlocks.push({
+    id: `${x},${y},${z}`,
+    x,
+    y,
+    z
+  });
+}
+
+const visualConnections = {};
+
+function makeConnectionKey(id1, id2) {
+  return [id1, id2].sort().join("|");
+}
+
+function connectVisually(id1, id2) {
+  visualConnections[makeConnectionKey(id1, id2)] = true;
+}
+
+function hasVisualConnection(blockA, blockB) {
+  if (!blockA || !blockB) return false;
+
+  const declared =
+    visualConnections[makeConnectionKey(blockA.id, blockB.id)] === true;
+
+  if (!declared) return false;
+
+  return isVisuallyAligned(blockA, blockB);
+}
+
+function getBlockAt(x, y, z) {
+  return terrainBlocks.find(block =>
+    block.x === x && block.y === y && block.z === z
+  );
+}
+
+function arePhysicallyConnected(blockA, blockB) {
+  if (!blockA || !blockB) return false;
+
+  const dx = Math.abs(blockA.x - blockB.x);
+  const dy = Math.abs(blockA.y - blockB.y);
+  const dz = Math.abs(blockA.z - blockB.z);
+
+  // voisin plat : gauche/droite/devant/derrière
+  const flatNeighbor = (dx + dz === 1 && dy === 0);
+
+  // voisin escalier : une marche plus haut ou plus bas + avance d'une case
+  const stairNeighbor = (dy === 1 && dx + dz === 1);
+
+  return flatNeighbor || stairNeighbor;
+}
+
+function getProjectedBlockPosition(block) {
+  const vector = new THREE.Vector3(block.x, block.y + 0.5, block.z);
+  vector.project(camera);
+
+  return {
+    x: vector.x,
+    y: vector.y
+  };
+}
+
+function isVisuallyAligned(blockA, blockB) {
+  if (!blockA || !blockB) return false;
+
+  const screenA = getProjectedBlockPosition(blockA);
+  const screenB = getProjectedBlockPosition(blockB);
+
+  const dx = Math.abs(screenA.x - screenB.x);
+  const dy = Math.abs(screenA.y - screenB.y);
+
+  const threshold = 0.12; // à ajuster
+
+  return dx < threshold && dy < threshold;
+}
+
+function canMoveBetween(blockA, blockB) {
+  if (!blockA || !blockB) return false;
+
+  // autoriser le déplacement sur le même bloc
+  if (blockA.id === blockB.id) return true;
+
+  return (
+    arePhysicallyConnected(blockA, blockB) ||
+    hasVisualConnection(blockA, blockB)
+  );
+}
+
+function findVisualTarget(currentBlock, forward) {
+  const connectedBlocks = terrainBlocks.filter(block =>
+    hasVisualConnection(currentBlock, block)
+  );
+
+  if (connectedBlocks.length === 0) return null;
+
+  for (const block of connectedBlocks) {
+    const directionToBlock = new THREE.Vector3(
+      block.x - currentBlock.x,
+      0,
+      block.z - currentBlock.z
+    );
+
+    if (directionToBlock.lengthSq() === 0) continue;
+
+    directionToBlock.normalize();
+
+    const dot = forward.dot(directionToBlock);
+
+    if (dot > 0.5) {
+      return block;
+    }
+  }
+
+  return null;
+}
+
+const playerRadius = 0;
+const playerHeightOffset = 0.129;
+
+function getBlockUnderPlayer(position) {
+  const matchingBlocks = terrainBlocks.filter(block => {
+    const minX = block.x - 0.5 + playerRadius;
+    const maxX = block.x + 0.5 - playerRadius;
+    const minZ = block.z - 0.5 + playerRadius;
+    const maxZ = block.z + 0.5 - playerRadius;
+
+    return (
+      position.x >= minX &&
+      position.x <= maxX &&
+      position.z >= minZ &&
+      position.z <= maxZ
+    );
+  });
+
+  if (matchingBlocks.length === 0) return null;
+
+  matchingBlocks.sort((a, b) => b.y - a.y);
+  return matchingBlocks[0];
+}
+
+function snapPlayerToSurface() {
+  const block = getBlockUnderPlayer(player.position);
+
+  if (block) {
+    player.position.y = block.y + 0.5 + playerHeightOffset;
+  }
+}
+
+function updatePlayer() {
+  const moveSpeed = 0.05;
+  const turnSpeed = 0.04;
+
+  if (keys.ArrowLeft) {
+    player.rotation.y += turnSpeed;
+  }
+
+  if (keys.ArrowRight) {
+    player.rotation.y -= turnSpeed;
+  }
+
+  const forward = new THREE.Vector3(0, 0, 1);
+  forward.applyQuaternion(player.quaternion);
+  forward.y = 0;
+  forward.normalize();
+
+  let movement = new THREE.Vector3(0, 0, 0);
+
+  if (keys.ArrowUp) {
+    movement.addScaledVector(forward, moveSpeed);
+  }
+
+  if (keys.ArrowDown) {
+    movement.addScaledVector(forward, -moveSpeed);
+  }
+
+  const currentBlock = getBlockUnderPlayer(player.position);
+
+  if (movement.lengthSq() > 0) {
+    const nextPosition = player.position.clone().add(movement);
+    const nextBlock = getBlockUnderPlayer(nextPosition);
+
+    if (currentBlock && nextBlock && canMoveBetween(currentBlock, nextBlock)) {
+      player.position.x = nextPosition.x;
+      player.position.z = nextPosition.z;
+      player.position.y = nextBlock.y + 0.5 + playerHeightOffset;
+    } else if (currentBlock) {
+      const visualTarget = findVisualTarget(currentBlock, forward);
+
+      if (visualTarget) {
+        player.position.x = visualTarget.x;
+        player.position.z = visualTarget.z;
+        player.position.y = visualTarget.y + 0.5 + playerHeightOffset;
+      }
+    }
+  } else {
+    snapPlayerToSurface();
+  }
 }
 
 // --- LES BLOCS ---
@@ -84,6 +283,13 @@ createBlock(6, 0, -4);
 createBlock(7, 0, -4);
 createBlock(8, 0, -4);
 createBlock(9, 0, -4);
+
+//connexion entre les bloques pour bouger sur les îlots
+connectVisually("4,4,-4", "-1,3,-5"); //ilot particule <--> escalier
+connectVisually("4,4,-4", "4,0,-9"); //ilot a la fleur <--> escalier
+connectVisually("4,4,-4", "6,0,-4"); //boucle
+connectVisually("6,0,-4", "-1,3,-5"); //ilot particule <--> ligne du haut du carré
+connectVisually("9,0,-4", "5,0,-11"); //ilot a la fleur <--> ligne du haut du carré
 
 const target = new THREE.Vector3(6, 2, -5);  // plus ou moins le centre de la forme (vue centré sur le centre)
 camera.lookAt(target);
@@ -295,15 +501,6 @@ function createAstronaut(x, y, z) {
       suitMat,
       0.11 * s, 0.04, 0
     );
-    
-    // pied
-    addMesh(
-      new THREE.SphereGeometry(0.085, 18, 18),
-      suitMat,
-      0.11 * s, -0.16, 0.05,
-      0, 0, 0,
-      1.0, 0.55, 1.35
-    );
   }
   
   addLeg(-1);
@@ -315,9 +512,11 @@ function createAstronaut(x, y, z) {
   return astronaut;
 }
 
-const player = createAstronaut(9, 0.5, 1);
+const player = createAstronaut(9, 0.63, 1);
 // le -2 c'est le sens d'apparition là il est orienté vers la gauche (donc la droite du perso)
 player.rotation.y = Math.PI / -2;  
+//
+snapPlayerToSurface();
 
 // animation du perso
 function animate() {
@@ -346,34 +545,4 @@ function animate() {
       keys[event.key] = false;
     }
   });
-
-  //la fonction qui le fait bouger
-  function updatePlayer() {
-    const moveSpeed = 0.05;
-    const turnSpeed = 0.04;
-    
-    // tourner à gauche - droite
-    if (keys.ArrowLeft) {
-      player.rotation.y += turnSpeed;
-    }
-    
-    if (keys.ArrowRight) {
-      player.rotation.y -= turnSpeed;
-    }
-    
-    // vecteur "avant" du personnage
-    const forward = new THREE.Vector3(0, 0, -1);
-    forward.applyQuaternion(player.quaternion);
-    forward.y = 0;
-    forward.normalize();
-    
-    // avancer - reculer
-    if (keys.ArrowUp) {
-      player.position.addScaledVector(forward, moveSpeed);
-    }
-    
-    if (keys.ArrowDown) {
-      player.position.addScaledVector(forward, -moveSpeed);
-    }
-  }
 animate();
