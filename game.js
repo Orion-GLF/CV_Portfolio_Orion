@@ -515,14 +515,117 @@ function createAstronaut(x, y, z) {
 const player = createAstronaut(9, 0.63, 1);
 // le -2 c'est le sens d'apparition là il est orienté vers la gauche (donc la droite du perso)
 player.rotation.y = Math.PI / -2;  
-//
 snapPlayerToSurface();
 
-// animation du perso
+//position sur la map
+const cvCrystal = createCvCrystal(4, 1.4, -11);
+
+function createCvCrystal(x, y, z) {
+  const crystal = new THREE.Group();
+
+  const mat = new THREE.LineBasicMaterial({ color: 0xffffff });
+
+  const points = [
+    new THREE.Vector3(0, 1.2, 0),   // top
+    new THREE.Vector3(0, -1.2, 0),  // bottom
+    new THREE.Vector3(-0.8, 0, 0),  // left
+    new THREE.Vector3(0.8, 0, 0),   // right
+    new THREE.Vector3(0, 0, 0.5),   // front
+    new THREE.Vector3(0, 0, -0.5),  // back
+  ];
+
+  function line(a, b) {
+    const geo = new THREE.BufferGeometry().setFromPoints([a, b]);
+    const l = new THREE.Line(geo, mat);
+    crystal.add(l);
+  }
+
+  const [top, bottom, left, right, front, back] = points;
+
+  // structure diamant
+  line(top, left);
+  line(top, right);
+  line(top, front);
+  line(top, back);
+
+  line(bottom, left);
+  line(bottom, right);
+  line(bottom, front);
+  line(bottom, back);
+
+  line(left, front);
+  line(front, right);
+  line(right, back);
+  line(back, left);
+
+  // coeur lumineux
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 20, 20),
+    new THREE.MeshBasicMaterial({ color: 0x7fefff })
+  );
+  crystal.add(core);
+
+  // glow léger
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.30, 20, 20),
+    new THREE.MeshBasicMaterial({
+      color: 0x33ccff,
+      transparent: true,
+      opacity: 0.2
+    })
+  );
+  crystal.add(glow);
+
+  // flare / étoile
+  const flare = new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      color: 0x66ddff,
+      transparent: true,
+      opacity: 0.6
+    })
+  );
+  flare.scale.set(0.8, 0.8, 0.8);
+  crystal.add(flare);
+
+  crystal.position.set(x, y, z);
+  crystal.scale.set(0.5, 0.5, 0.5);
+
+  crystal.userData.core = core;
+  crystal.userData.glow = glow;
+  crystal.userData.flare = flare;
+  crystal.userData.baseY = y;
+
+  scene.add(crystal);
+  return crystal;
+}
+
+function updateCvCrystal() {
+  const time = performance.now() * 0.001;
+
+  cvCrystal.rotation.y += 0.01;
+
+  // flottement
+  cvCrystal.position.y = cvCrystal.userData.baseY + Math.sin(time * 1.5) * 0.1;
+
+  // respiration globale
+  cvCrystal.scale.setScalar(0.5 + Math.sin(time * 2) * 0.02);
+
+  // coeur et glow
+  const pulse = 1 + Math.sin(time * 3) * 0.15;
+  cvCrystal.userData.core.scale.setScalar(pulse);
+  cvCrystal.userData.glow.scale.setScalar(1.3 + Math.sin(time * 3) * 0.1);
+
+  // flare scintillant
+  cvCrystal.userData.flare.scale.setScalar(0.8 + Math.sin(time * 4) * 0.2);
+  cvCrystal.userData.flare.material.opacity = 0.5 + Math.sin(time * 4) * 0.2;
+}
+
+// animation du perso , cristal
 function animate() {
   requestAnimationFrame(animate);
 
   updatePlayer();
+  updateCvCrystal();
   controls.update();
   renderer.render(scene, camera);
 }
