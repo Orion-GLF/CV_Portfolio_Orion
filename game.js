@@ -221,12 +221,16 @@ function updatePlayer() {
   const moveSpeed = 0.05;
   const turnSpeed = 0.04;
 
+  player.userData.anim.mode = "idle";
+
   if (keys.ArrowLeft) {
     player.rotation.y += turnSpeed;
+    player.userData.anim.mode = "turnLeft";
   }
 
   if (keys.ArrowRight) {
     player.rotation.y -= turnSpeed;
+    player.userData.anim.mode = "turnRight";
   }
 
   const forward = new THREE.Vector3(0, 0, 1);
@@ -238,10 +242,12 @@ function updatePlayer() {
 
   if (keys.ArrowUp) {
     movement.addScaledVector(forward, moveSpeed);
+    player.userData.anim.mode = "walk";
   }
 
   if (keys.ArrowDown) {
     movement.addScaledVector(forward, -moveSpeed);
+    player.userData.anim.mode = "back";
   }
 
   const currentBlock = getBlockUnderPlayer(player.position);
@@ -467,66 +473,106 @@ function createAstronaut(x, y, z) {
   astronaut.add(packLine);
   
   // bras
-  function addArm(side) {
-    const s = side;
-    
-    // épaules
-    addMesh(
+  function addArm(side, name) {
+  const s = side;
+  const armGroup = new THREE.Group();
+  armGroup.position.set(0.24 * s, 1.34, 0);
+  astronaut.add(armGroup);
+
+  function addToArm(
+      geometry,
+      material,
+      px, py, pz,
+      rx = 0, ry = 0, rz = 0,
+      sx = 1, sy = 1, sz = 1
+    ) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(px, py, pz);
+      mesh.rotation.set(rx, ry, rz);
+      mesh.scale.set(sx, sy, sz);
+      armGroup.add(mesh);
+      return mesh;
+    }
+
+    // épaule
+    addToArm(
       new THREE.SphereGeometry(0.11, 18, 18),
       suitMat,
-      0.24 * s, 1.34, 0
+      0, 0, 0
     );
-    
+
     // haut du bras
-    addMesh(
+    addToArm(
       new THREE.CylinderGeometry(0.06, 0.08, 0.40, 18),
       suitMat,
-      0.29 * s, 1.211, 0,
+      0.05 * s, -0.13, 0,
       0, 0, 0.12 * s
     );
-    
+
     // bas du bras
-    addMesh(
+    addToArm(
       new THREE.CylinderGeometry(0.085, 0.10, 0.30, 18),
       suitMat,
-      0.3425 * s, 0.78, 0,
+      0.10 * s, -0.56, 0,
       0, 0, 0.08 * s
     );
-    
+
     // main
-    addMesh(
+    addToArm(
       new THREE.SphereGeometry(0.075, 18, 18),
       suitMat,
-      0.39 * s, 0.60, 0.01,
+      0.15 * s, -0.74, 0.01,
       0, 0, 0,
       0.9, 1.15, 0.8
     );
+
+    astronaut.userData[name] = armGroup;
   }
   
-  addArm(-1);
-  addArm(1);
+  addArm(-1, "leftArm");
+  addArm(1, "rightArm");
   
   // jambes
-  function addLeg(side) {
+  function addLeg(side, name) {
     const s = side;
-    
-    // cuisses
-    addMesh(
+    const legGroup = new THREE.Group();
+    legGroup.position.set(0.11 * s, 0.64, 0);
+    astronaut.add(legGroup);
+
+    function addToLeg(
+      geometry,
+      material,
+      px, py, pz,
+      rx = 0, ry = 0, rz = 0,
+      sx = 1, sy = 1, sz = 1
+    ) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(px, py, pz);
+      mesh.rotation.set(rx, ry, rz);
+      mesh.scale.set(sx, sy, sz);
+      legGroup.add(mesh);
+      return mesh;
+    }
+
+    // cuisse
+    addToLeg(
       new THREE.CylinderGeometry(0.10, 0.105, 0.38, 18),
       suitMat,
-      0.11 * s, 0.45, 0
+      0, -0.19, 0
     );
-    
+
     // bas de jambe
-    addMesh(
+    addToLeg(
       new THREE.CylinderGeometry(0.10, 0.10, 0.34, 18),
       suitMat,
-      0.11 * s, 0.04, 0
+      0, -0.60, 0
     );
+
+    astronaut.userData[name] = legGroup;
   }
   
-  addLeg(-1);
-  addLeg(1);
+  addLeg(-1, "leftLeg");
+  addLeg(1, "rightLeg");
   
   astronaut.position.set(x, y, z);
   scene.add(astronaut);
@@ -538,6 +584,65 @@ const player = createAstronaut(9, 0.63, 1);
 // le -2 c'est le sens d'apparition là il est orienté vers la gauche (donc la droite du perso)
 player.rotation.y = Math.PI / -2;  
 snapPlayerToSurface();
+
+player.userData.anim = {
+  mode: "idle", // idle, walk, back, turnLeft, turnRight, reach
+  phase: 0,
+  reaching: false
+};
+
+function animatePlayerBody(deltaTime = 0.016) {
+  const anim = player.userData.anim;
+  const t = performance.now() * 0.008;
+
+  const leftArm = player.userData.leftArm;
+  const rightArm = player.userData.rightArm;
+  const leftLeg = player.userData.leftLeg;
+  const rightLeg = player.userData.rightLeg;
+
+  if (!leftArm || !rightArm || !leftLeg || !rightLeg) return;
+
+  // reset doux
+  leftArm.rotation.x *= 0.8;
+  rightArm.rotation.x *= 0.8;
+  leftLeg.rotation.x *= 0.8;
+  rightLeg.rotation.x *= 0.8;
+  player.rotation.z *= 0.8;
+
+  if (anim.mode === "walk") {
+    leftArm.rotation.x = Math.sin(t) * 0.5;
+    rightArm.rotation.x = -Math.sin(t) * 0.5;
+    leftLeg.rotation.x = -Math.sin(t) * 0.6;
+    rightLeg.rotation.x = Math.sin(t) * 0.6;
+  }
+
+  if (anim.mode === "back") {
+    leftArm.rotation.x = -Math.sin(t) * 0.25;
+    rightArm.rotation.x = Math.sin(t) * 0.25;
+    leftLeg.rotation.x = Math.sin(t) * 0.35;
+    rightLeg.rotation.x = -Math.sin(t) * 0.35;
+  }
+
+  if (anim.mode === "turnLeft") {
+    player.rotation.z = Math.sin(t * 0.5) * 0.05;
+    leftArm.rotation.x = 0.08;
+    rightArm.rotation.x = -0.08;
+  }
+
+  if (anim.mode === "turnRight") {
+    player.rotation.z = -Math.sin(t * 0.5) * 0.05;
+    leftArm.rotation.x = 0.08;
+    rightArm.rotation.x = -0.08;
+  }
+
+  if (anim.mode === "reach") {
+    rightArm.rotation.x = -1.2;
+    rightArm.rotation.z = -0.25;
+    leftArm.rotation.x = 0.15;
+    leftLeg.rotation.x = 0.08;
+    rightLeg.rotation.x = -0.08;
+  }
+}
 
 //position sur la map
 const cvCrystal = createCvCrystal(4, 1.4, -11);
@@ -670,6 +775,7 @@ function animate() {
   requestAnimationFrame(animate);
 
   updatePlayer();
+  animatePlayerBody();
   updateCvCrystal();
   controls.update();
   renderer.render(scene, camera);
