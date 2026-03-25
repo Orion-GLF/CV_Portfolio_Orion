@@ -1,5 +1,83 @@
+/* body {
+  margin: 0;
+  overflow: hidden;
+  background: rgb(0, 8, 16);
+} */
+
 body {
   margin: 0;
   overflow: hidden;
   background: rgb(0, 8, 16);
+  font-family: Arial, sans-serif;
+}
+
+#cv-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 8, 18, 0.35);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+}
+
+#cv-overlay.hidden {
+  display: none;
+}
+
+#cv-panel {
+  position: relative;
+  width: min(900px, 85vw);
+  height: min(80vh, 900px);
+  padding: 28px;
+  border-radius: 18px;
+  overflow-y: auto;
+
+  background: rgba(10, 16, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 32px rgba(90, 200, 255, 0.12);
+
+  color: white;
+}
+
+#cv-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 20px;
+}
+
+#cv-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+#cv-content h1 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 2rem;
+}
+
+#cv-content h2 {
+  margin-top: 28px;
+  margin-bottom: 8px;
+  font-size: 1.2rem;
+  color: #8fe8ff;
+}
+
+#cv-content p,
+#cv-content li {
+  line-height: 1.5;
+}
+
+#cv-content ul {
+  padding-left: 20px;
 }

@@ -30,6 +30,28 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+const cvOverlay = document.getElementById("cv-overlay");
+const cvCloseButton = document.getElementById("cv-close");
+
+function openCvOverlay() {
+  cvOverlay.classList.remove("hidden");
+}
+
+function closeCvOverlay() {
+  cvOverlay.classList.add("hidden");
+}
+
+cvCloseButton.addEventListener("click", closeCvOverlay);
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeCvOverlay();
+  }
+});
+
 const terrainBlocks = [];
 
 function createBlock(x, y, z) {
@@ -520,6 +542,19 @@ snapPlayerToSurface();
 //position sur la map
 const cvCrystal = createCvCrystal(4, 1.4, -11);
 
+window.addEventListener("click", (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObject(cvCrystal, true);
+
+  if (intersects.length > 0) {
+    openCvOverlay();
+  }
+});
+
 function createCvCrystal(x, y, z) {
   const crystal = new THREE.Group();
 
@@ -587,12 +622,22 @@ function createCvCrystal(x, y, z) {
   flare.scale.set(0.8, 0.8, 0.8);
   crystal.add(flare);
 
+  const clickHitbox = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 16, 16),
+    new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0
+    })
+  );
+  crystal.add(clickHitbox);
+
   crystal.position.set(x, y, z);
   crystal.scale.set(0.5, 0.5, 0.5);
 
   crystal.userData.core = core;
   crystal.userData.glow = glow;
   crystal.userData.flare = flare;
+  crystal.userData.clickHitbox = clickHitbox;
   crystal.userData.baseY = y;
 
   scene.add(crystal);
