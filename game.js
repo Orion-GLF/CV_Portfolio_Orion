@@ -319,6 +319,13 @@ connectVisually("4,4,-4", "6,0,-4"); //boucle
 connectVisually("6,0,-4", "-1,3,-5"); //ilot particule <--> ligne du haut du carré
 connectVisually("9,0,-4", "5,0,-11"); //ilot a la fleur <--> ligne du haut du carré
 
+const crystalAccessIds = new Set([
+  "4,0,-11",
+  "4,0,-10",
+  "5,0,-11",
+  "5,0,-10"
+]);
+
 const target = new THREE.Vector3(6, 2, -5);  // plus ou moins le centre de la forme (vue centré sur le centre)
 camera.lookAt(target);
 
@@ -585,6 +592,14 @@ const player = createAstronaut(9, 0.63, 1);
 player.rotation.y = Math.PI / -2;  
 snapPlayerToSurface();
 
+function canInteractWithCrystal() {
+  const currentBlock = getBlockUnderPlayer(player.position);
+
+  if (!currentBlock) return false;
+
+  return crystalAccessIds.has(currentBlock.id);
+}
+
 player.userData.anim = {
   mode: "idle", // idle, walk, back, turnLeft, turnRight, reach
   phase: 0,
@@ -655,7 +670,7 @@ window.addEventListener("click", (event) => {
 
   const intersects = raycaster.intersectObject(cvCrystal, true);
 
-  if (intersects.length > 0) {
+  if (intersects.length > 0 && canInteractWithCrystal()) {
     openCvOverlay();
   }
 });
