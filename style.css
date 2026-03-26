@@ -5,6 +5,36 @@ body {
   font-family: Arial, sans-serif;
 }
 
+#cv-content h2 {
+  position: relative;
+  display: inline-block;
+  width: fit-content; 
+  padding-bottom: 6px;
+}
+
+#cv-content h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background: #92e7fe;
+  box-shadow: 0 0 6px #92e7fe;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
+
+#cv-content a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 #cv-overlay {
   position: fixed;
   inset: 0;
