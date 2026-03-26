@@ -4,7 +4,7 @@ import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/cont
 console.log("game.js chargé");
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x080a0f);
+scene.background = null;
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
@@ -26,9 +26,46 @@ const camera = new THREE.OrthographicCamera(
 
 camera.position.set(15, 5.5, 5);  // vue au lancement du site
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+renderer.domElement.style.position = "fixed";
+renderer.domElement.style.inset = "0";
+renderer.domElement.style.zIndex = "1";
+
+const bgCanvas = document.getElementById("bg-canvas");
+const bgCtx = bgCanvas.getContext("2d");
+
+function resizeBgCanvas() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+resizeBgCanvas();
+
+const smokeParticles = [];
+const mouseTrail = {
+  x: window.innerWidth * 0.5,
+  y: window.innerHeight * 0.5
+};
+
+window.addEventListener("mousemove", (event) => {
+  mouseTrail.x = event.clientX;
+  mouseTrail.y = event.clientY;
+
+  for (let i = 0; i < 4; i++) {
+    smokeParticles.push({
+      x: event.clientX + (Math.random() - 0.5) * 30,
+      y: event.clientY + (Math.random() - 0.5) * 30,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: (Math.random() - 0.5) * 0.8,
+      radius: 60 + Math.random() * 60,
+      life: 1,
+      decay: 0.012 + Math.random() * 0.01,
+      hue: 190 + Math.random() * 90
+    });
+  }
+});
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -344,6 +381,7 @@ window.addEventListener('resize', () => {
   camera.bottom = -8;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  resizeBgCanvas();
 });
 
 // personnage
@@ -764,6 +802,67 @@ function createCvCrystal(x, y, z) {
   return crystal;
 }
 
+function updateBackgroundEffect() {
+  bgCtx.fillStyle = "rgba(5, 8, 20, 0.08)";
+  bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+  const baseGradient = bgCtx.createRadialGradient(
+    bgCanvas.width * 0.7,
+    bgCanvas.height * 0.2,
+    50,
+    bgCanvas.width * 0.7,
+    bgCanvas.height * 0.2,
+    bgCanvas.width * 0.9
+  );
+  baseGradient.addColorStop(0, "rgba(120, 40, 180, 0.06)");
+  baseGradient.addColorStop(0.4, "rgba(50, 80, 200, 0.04)");
+  baseGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+  bgCtx.fillStyle = baseGradient;
+  bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+  for (let i = smokeParticles.length - 1; i >= 0; i--) {
+    const p = smokeParticles[i];
+
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life -= p.decay;
+    p.radius *= 1.003;
+
+    if (p.life <= 0) {
+      smokeParticles.splice(i, 1);
+      continue;
+    }
+
+    const gradient = bgCtx.createRadialGradient(
+      p.x, p.y, 0,
+      p.x, p.y, p.radius
+    );
+
+    gradient.addColorStop(0, `hsla(${p.hue}, 100%, 70%, ${p.life * 0.22})`);
+    gradient.addColorStop(0.35, `hsla(${p.hue}, 100%, 60%, ${p.life * 0.12})`);
+    gradient.addColorStop(1, `hsla(${p.hue}, 100%, 50%, 0)`);
+
+    bgCtx.fillStyle = gradient;
+    bgCtx.beginPath();
+    bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    bgCtx.fill();
+  }
+
+  const glow = bgCtx.createRadialGradient(
+    mouseTrail.x, mouseTrail.y, 0,
+    mouseTrail.x, mouseTrail.y, 140
+  );
+  glow.addColorStop(0, "rgba(120, 220, 255, 0.18)");
+  glow.addColorStop(0.25, "rgba(90, 140, 255, 0.10)");
+  glow.addColorStop(0.6, "rgba(160, 80, 220, 0.06)");
+  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+  bgCtx.fillStyle = glow;
+  bgCtx.beginPath();
+  bgCtx.arc(mouseTrail.x, mouseTrail.y, 140, 0, Math.PI * 2);
+  bgCtx.fill();
+}
+
 function updateCvCrystal() {
   const time = performance.now() * 0.001;
 
@@ -789,6 +888,7 @@ function updateCvCrystal() {
 function animate() {
   requestAnimationFrame(animate);
 
+  updateBackgroundEffect();
   updatePlayer();
   animatePlayerBody();
   updateCvCrystal();
