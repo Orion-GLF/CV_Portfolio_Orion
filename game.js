@@ -505,7 +505,7 @@ camera.lookAt(target);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
-controls.enableZoom = true;
+controls.enableZoom = false;
 controls.target.copy(target);
 controls.update();
 
@@ -1009,8 +1009,13 @@ function animate() {
   updatePlayer();
   animatePlayerBody();
   updateCvCrystal();
+
   stars.rotation.y += 0.0002;
   stars.rotation.x += 0.00005;
+
+  // Fixé le fond "bulle"
+  sky.position.copy(camera.position);
+
   controls.update();
   renderer.render(scene, camera);
 }
