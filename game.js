@@ -4,7 +4,71 @@ import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/cont
 console.log("game.js chargé");
 
 const scene = new THREE.Scene();
-scene.background = null;
+
+//fond dégradé
+// const skyGeo = new THREE.SphereGeometry(1000, 64, 64);
+const skyGeo = new THREE.SphereGeometry(35, 64, 64);
+
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  uniforms: {
+    topColor: { value: new THREE.Color(0x1a2a6c) },   // bleu profond
+    bottomColor: { value: new THREE.Color(0x3a0ca3) }, // violet spatial
+  },
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 topColor;
+    uniform vec3 bottomColor;
+
+    varying vec3 vWorldPosition;
+
+    void main() {
+
+      vec3 dir = normalize(vWorldPosition);
+
+      // inclinaison
+      float h = dir.y + dir.x * 0.3;
+      
+      float wave = sin(dir.x * 6.0) * 1.55;
+      h += wave;
+
+      
+      float noise =
+      sin(dir.x * 4.0) * 0.05 +
+      sin(dir.z * 3.0) * 0.05;
+      
+      h += noise;
+      
+      // gradient principal
+      float gradient = h * 0.5 + 0.5;
+      
+      vec3 color = mix(bottomColor, topColor, gradient);
+      
+      // profondeur vers le haut et le bas
+      float depthFade = pow(abs(h), 1.5);
+      color *= 1.0 - depthFade * 0.6;
+      
+      // glow central (nébuleuse douce)
+      float glow = pow(1.0 - abs(h), 3.0);
+      color += glow * 0.15;
+
+      gl_FragColor = vec4(color, 1.0);
+
+    }
+  `
+});
+
+const sky = new THREE.Mesh(skyGeo, skyMat);
+scene.add(sky);
+
+scene.fog = new THREE.FogExp2(0x020611, 0.015);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
@@ -12,6 +76,67 @@ scene.add(ambientLight);
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1.3);
 directionalLight.position.set(10, 20, 10);
 scene.add(directionalLight);
+
+const starsGeometry = new THREE.BufferGeometry();
+const starsCount = 12000;
+
+const positions = new Float32Array(starsCount * 3);
+const colors = new Float32Array(starsCount * 3);
+
+for (let i = 0; i < starsCount; i++) {
+  const i3 = i * 3;
+
+  // positions plus naturelles
+  positions[i3] = (Math.random() - 0.5) * 80;
+  positions[i3 + 1] = (Math.random() - 0.5) * 80;
+  positions[i3 + 2] = (Math.random() - 0.5) * 80;
+
+  // couleurs légèrement variées
+  const r = 0.8 + Math.random() * 0.2;
+  const g = 0.8 + Math.random() * 0.2;
+  const b = 1;
+
+  colors[i3] = r;
+  colors[i3 + 1] = g;
+  colors[i3 + 2] = b;
+}
+
+starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+starsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+const starsMaterial = new THREE.PointsMaterial({
+  size: 1.2,
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.9,
+});
+
+const stars = new THREE.Points(starsGeometry, starsMaterial);
+scene.add(stars);
+
+// 🌌 étoiles lointaines
+const starsFarGeometry = new THREE.BufferGeometry();
+const starsFarVertices = [];
+
+for (let i = 0; i < 4000; i++) {
+  starsFarVertices.push(
+    (Math.random() - 0.5) * 200,
+    (Math.random() - 0.5) * 200,
+    (Math.random() - 0.5) * 200
+  );
+}
+
+starsFarGeometry.setAttribute(
+  'position',
+  new THREE.Float32BufferAttribute(starsFarVertices, 3)
+);
+
+const starsFarMaterial = new THREE.PointsMaterial({
+  color: 0x88aaff,
+  size: 0.6,
+  transparent: true,
+  opacity: 0.5,
+});
 
 const aspect = window.innerWidth / window.innerHeight;
 
@@ -49,20 +174,32 @@ const mouseTrail = {
   y: window.innerHeight * 0.5
 };
 
+let lastMouseMoveTime = 0;
+
 window.addEventListener("mousemove", (event) => {
   mouseTrail.x = event.clientX;
   mouseTrail.y = event.clientY;
+  lastMouseMoveTime = Date.now();
 
-  for (let i = 0; i < 4; i++) {
+  const smokePalette = [
+    200, // bleu
+    190, // bleu-cyan
+    180, // cyan
+    140, // vert
+    80   // jaune-vert
+  ];
+
+  for (let i = 0; i < 10; i++) {
+    const hue = smokePalette[Math.floor(Math.random() * smokePalette.length)];
+
     smokeParticles.push({
-      x: event.clientX + (Math.random() - 0.5) * 30,
-      y: event.clientY + (Math.random() - 0.5) * 30,
-      vx: (Math.random() - 0.5) * 0.8,
-      vy: (Math.random() - 0.5) * 0.8,
-      radius: 60 + Math.random() * 60,
+      x: event.clientX + (Math.random() - 0.5) * 36,
+      y: event.clientY + (Math.random() - 0.5) * 36,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: (Math.random() - 0.5) * 1.2,
       life: 1,
-      decay: 0.012 + Math.random() * 0.01,
-      hue: 190 + Math.random() * 90
+      decay: 0.025 + Math.random() * 0.02,
+      hue: hue
     });
   }
 });
@@ -803,22 +940,8 @@ function createCvCrystal(x, y, z) {
 }
 
 function updateBackgroundEffect() {
-  bgCtx.fillStyle = "rgba(5, 8, 20, 0.08)";
-  bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
-  const baseGradient = bgCtx.createRadialGradient(
-    bgCanvas.width * 0.7,
-    bgCanvas.height * 0.2,
-    50,
-    bgCanvas.width * 0.7,
-    bgCanvas.height * 0.2,
-    bgCanvas.width * 0.9
-  );
-  baseGradient.addColorStop(0, "rgba(120, 40, 180, 0.06)");
-  baseGradient.addColorStop(0.4, "rgba(50, 80, 200, 0.04)");
-  baseGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
-  bgCtx.fillStyle = baseGradient;
-  bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+  bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
 
   for (let i = smokeParticles.length - 1; i >= 0; i--) {
     const p = smokeParticles[i];
@@ -826,41 +949,35 @@ function updateBackgroundEffect() {
     p.x += p.vx;
     p.y += p.vy;
     p.life -= p.decay;
-    p.radius *= 1.003;
 
     if (p.life <= 0) {
       smokeParticles.splice(i, 1);
       continue;
     }
 
-    const gradient = bgCtx.createRadialGradient(
-      p.x, p.y, 0,
-      p.x, p.y, p.radius
-    );
+    const pixelSize = 4 + Math.floor(Math.random() * 3); // 4 à 6 px
+    const snappedX = Math.floor(p.x / pixelSize) * pixelSize;
+    const snappedY = Math.floor(p.y / pixelSize) * pixelSize;
 
-    gradient.addColorStop(0, `hsla(${p.hue}, 100%, 70%, ${p.life * 0.22})`);
-    gradient.addColorStop(0.35, `hsla(${p.hue}, 100%, 60%, ${p.life * 0.12})`);
-    gradient.addColorStop(1, `hsla(${p.hue}, 100%, 50%, 0)`);
+    // cube / pixel principal
+    bgCtx.fillStyle = `hsla(${p.hue}, 100%, 62%, ${p.life * 0.34})`;
+    bgCtx.shadowBlur = 14;
+    bgCtx.shadowColor = `hsla(${p.hue}, 100%, 60%, ${p.life * 0.7})`;
+    bgCtx.fillRect(snappedX, snappedY, pixelSize, pixelSize);
 
-    bgCtx.fillStyle = gradient;
-    bgCtx.beginPath();
-    bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-    bgCtx.fill();
+    // face lumineuse interne
+    bgCtx.fillStyle = `hsla(${p.hue}, 100%, 78%, ${p.life * 0.22})`;
+    bgCtx.fillRect(snappedX + 1, snappedY + 1, pixelSize - 2, pixelSize - 2);
+
+    // paillette
+    if (Math.random() > 0.72) {
+      bgCtx.fillStyle = `rgba(255,255,255,${p.life * 0.5})`;
+      bgCtx.fillRect(snappedX + pixelSize / 2, snappedY, 1, pixelSize);
+      bgCtx.fillRect(snappedX, snappedY + pixelSize / 2, pixelSize, 1);
+    }
+
+    bgCtx.shadowBlur = 0;
   }
-
-  const glow = bgCtx.createRadialGradient(
-    mouseTrail.x, mouseTrail.y, 0,
-    mouseTrail.x, mouseTrail.y, 140
-  );
-  glow.addColorStop(0, "rgba(120, 220, 255, 0.18)");
-  glow.addColorStop(0.25, "rgba(90, 140, 255, 0.10)");
-  glow.addColorStop(0.6, "rgba(160, 80, 220, 0.06)");
-  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-  bgCtx.fillStyle = glow;
-  bgCtx.beginPath();
-  bgCtx.arc(mouseTrail.x, mouseTrail.y, 140, 0, Math.PI * 2);
-  bgCtx.fill();
 }
 
 function updateCvCrystal() {
@@ -892,6 +1009,8 @@ function animate() {
   updatePlayer();
   animatePlayerBody();
   updateCvCrystal();
+  stars.rotation.y += 0.0002;
+  stars.rotation.x += 0.00005;
   controls.update();
   renderer.render(scene, camera);
 }
