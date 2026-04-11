@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
 
+let controls;
+
 console.log("game.js chargé");
 
 const scene = new THREE.Scene();
@@ -144,19 +146,54 @@ const isMobile = window.innerWidth < 768;
 const frustumSize = isMobile ? 12 : 8;
 
 const camera = new THREE.OrthographicCamera(
-  -frustumSize * aspect,
-   frustumSize * aspect,
-   frustumSize,
-  -frustumSize,
+  -8 * aspect,
+   8 * aspect,
+   8,
+  -8,
    0.1,
    1000
 );
 
-// camera.position.set(15, 5.5, 5);  // vue au lancement du site
-if (isMobile) {
-  camera.position.set(12, 6, 6); // plus loin → moins zoomé
-} else {
-  camera.position.set(15, 5.5, 5); // ta vue actuelle conservée
+function setupCamera() {
+  const aspect = window.innerWidth / window.innerHeight;
+  const isMobile = window.innerWidth < 768;
+
+  if (isMobile) {
+    const size = 12;
+
+    camera.left = -size * aspect;
+    camera.right = size * aspect;
+    camera.top = size;
+    camera.bottom = -size;
+
+    camera.position.set(10, 8, 8);
+
+    //VUE MOBILE (ajustable)
+    camera.lookAt(6, 1.5, -4);
+    
+    if (controls) {
+      controls.target.set(6, 1.5, -4);
+    }
+
+  } else {
+    const size = 8;
+
+    camera.left = -size * aspect;
+    camera.right = size * aspect;
+    camera.top = size;
+    camera.bottom = -size;
+
+    camera.position.set(15, 5.5, 5);
+
+    //VUE PC (inchangé)
+    camera.lookAt(6, 2, -5);
+
+    if (controls) {
+      controls.target.set(6, 2, -5);
+    }
+  }
+
+  camera.updateProjectionMatrix();
 }
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -535,25 +572,16 @@ const crystalAccessIds = new Set([
 ]);
 
 const target = new THREE.Vector3(6, 2, -5);  // plus ou moins le centre de la forme (vue centré sur le centre)
+
+setupCamera();
+
 camera.lookAt(target);
 
-const controls = new OrbitControls(camera, renderer.domElement);
+controls = new OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
 controls.enableZoom = false;
 controls.target.copy(target);
 controls.update();
-
-
-window.addEventListener('resize', () => {
-  const aspect = window.innerWidth / window.innerHeight;
-  camera.left = -8 * aspect;
-  camera.right = 8 * aspect;
-  camera.top = 8;
-  camera.bottom = -8;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  resizeBgCanvas();
-});
 
 // personnage
 function createAstronaut(x, y, z) {
@@ -1074,6 +1102,12 @@ function animate() {
     ArrowLeft: false,
     ArrowRight: false
   };
+
+  window.addEventListener('resize', () => {
+    setupCamera();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    resizeBgCanvas();
+  });
 
   window.addEventListener("keydown", (event) => {
     if (event.key in keys) {
