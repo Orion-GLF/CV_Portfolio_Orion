@@ -3,6 +3,7 @@ body {
   overflow: hidden;
   background: rgb(0, 8, 16);
   font-family: Arial, sans-serif;
+  touch-action: none;
 }
 
 #cv-content h2 {

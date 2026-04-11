@@ -139,17 +139,25 @@ const starsFarMaterial = new THREE.PointsMaterial({
 });
 
 const aspect = window.innerWidth / window.innerHeight;
+const isMobile = window.innerWidth < 768;
+
+const frustumSize = isMobile ? 12 : 8;
 
 const camera = new THREE.OrthographicCamera(
-  -8 * aspect,
-   8 * aspect,
-   8,
-  -8,
+  -frustumSize * aspect,
+   frustumSize * aspect,
+   frustumSize,
+  -frustumSize,
    0.1,
    1000
 );
 
-camera.position.set(15, 5.5, 5);  // vue au lancement du site
+// camera.position.set(15, 5.5, 5);  // vue au lancement du site
+if (isMobile) {
+  camera.position.set(12, 6, 6); // plus loin → moins zoomé
+} else {
+  camera.position.set(15, 5.5, 5); // ta vue actuelle conservée
+}
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -174,6 +182,8 @@ const mouseTrail = {
   y: window.innerHeight * 0.5
 };
 
+let isTouching = false;
+
 let lastMouseMoveTime = 0;
 
 window.addEventListener("mousemove", (event) => {
@@ -195,6 +205,30 @@ window.addEventListener("mousemove", (event) => {
     smokeParticles.push({
       x: event.clientX + (Math.random() - 0.5) * 36,
       y: event.clientY + (Math.random() - 0.5) * 36,
+      vx: (Math.random() - 0.5) * 1.2,
+      vy: (Math.random() - 0.5) * 1.2,
+      life: 1,
+      decay: 0.025 + Math.random() * 0.02,
+      hue: hue
+    });
+  }
+});
+
+window.addEventListener("touchmove", (event) => {
+  const touch = event.touches[0];
+
+  mouseTrail.x = touch.clientX;
+  mouseTrail.y = touch.clientY;
+  lastMouseMoveTime = Date.now();
+
+  const smokePalette = [200, 190, 180, 140, 80];
+
+  for (let i = 0; i < 10; i++) {
+    const hue = smokePalette[Math.floor(Math.random() * smokePalette.length)];
+
+    smokeParticles.push({
+      x: touch.clientX + (Math.random() - 0.5) * 36,
+      y: touch.clientY + (Math.random() - 0.5) * 36,
       vx: (Math.random() - 0.5) * 1.2,
       vy: (Math.random() - 0.5) * 1.2,
       life: 1,
@@ -941,6 +975,20 @@ function createCvCrystal(x, y, z) {
 
 function updateBackgroundEffect() {
 
+  if (isTouching) {
+    for (let i = 0; i < 5; i++) {
+      smokeParticles.push({
+        x: mouseTrail.x + (Math.random() - 0.5) * 20,
+        y: mouseTrail.y + (Math.random() - 0.5) * 20,
+        vx: (Math.random() - 0.5),
+        vy: (Math.random() - 0.5),
+        life: 1,
+        decay: 0.02,
+        hue: 190
+      });
+    }
+  }
+
   bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
 
   for (let i = smokeParticles.length - 1; i >= 0; i--) {
@@ -1038,4 +1086,17 @@ function animate() {
       keys[event.key] = false;
     }
   });
+
+  document.body.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+  }, { passive: false });
+  
+  window.addEventListener("touchstart", () => {
+    isTouching = true;
+  });
+
+  window.addEventListener("touchend", () => {
+    isTouching = false;
+  });
+
 animate();
