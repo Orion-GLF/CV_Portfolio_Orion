@@ -6,6 +6,64 @@ body {
   touch-action: none;
 }
 
+#intro-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+#intro-panel {
+  background: rgba(20, 20, 30, 0.85);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 30px;
+  border-radius: 12px;
+  color: white;
+  max-width: 400px;
+  text-align: justify;
+}
+
+#intro-panel h1 {
+  text-align: center;
+}
+
+#intro-panel p {
+  margin-bottom: 10px;
+}
+
+.spaced {
+  margin-top: 15px;
+}
+
+#intro-enter {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: #66ddff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: block;
+  margin: 20px auto;
+}
+
+.intro-hide {
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+#intro-screen {
+  pointer-events: auto;
+}
+
+#intro-screen.intro-hide {
+  opacity: 0;
+  pointer-events: none; 
+}
+
 #cv-content h2 {
   position: relative;
   display: inline-block;

@@ -6,7 +6,32 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
   <canvas id="bg-canvas"></canvas>
+
+  <div id="intro-screen">
+    <div id="intro-panel">
+      <h1>Bienvenue</h1>
+      <p>Voici mon portfolio interactif (largement inspiré d'echochrome) ^^ <br><br>
+      Pour l'instant vous y trouverez mon CV consultable en cliquant sur le prisme. Si vous souhaitez y accéder il vous suffit de trouver les différents passages d'accès qui vous mèneront aux îlots.<br><br>
+      D'autres fonctionnalités seront mises en place par la suite donc n'hésitez à revenir ;p</p>
+
+      <ul>
+        <li>Touche du clavier :</li>
+          <ul>
+            <li>Avancer : ↑</li>
+            <li>Reculer : ↓</li>
+            <li>Tourner à gauche : ←</li>
+            <li>Tourner à droite : →</li>
+          </ul>
+        <li class="spaced">Pour bouger la map, faites clic gauche avec votre souris.</li>
+        <li class="spaced">✨ Pour interagir avec un objet vous devez vous situer à une distance de 1 cube au maximum de sa localisation.</li>
+        <li class="spaced">💠 Mon CV est consultable en cliquant sur le cristal.</li>
+      </ul>
+
+      <button id="intro-enter">Entrer</button>
+    </div>
+  </div>
 
   <div id="cv-overlay" class="hidden">
     <div id="cv-panel">
@@ -57,6 +82,7 @@
             <li>Git, GitHub</li>
             <li>Intégration d’API</li>
             <li>Base de données</li>
+            <li>OSINT</li>
           </ul>
         </section>
 
@@ -149,5 +175,6 @@
   </script>
 
   <script type="module" src="game.js"></script>
+  <script src="intro.js"></script>
 </body>
 </html>
