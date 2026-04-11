@@ -3,7 +3,7 @@ import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/cont
 
 let controls;
 
-console.log("game.js chargé");
+console.log("GAME JS V2");
 
 const scene = new THREE.Scene();
 
@@ -141,9 +141,6 @@ const starsFarMaterial = new THREE.PointsMaterial({
 });
 
 const aspect = window.innerWidth / window.innerHeight;
-const isMobile = window.innerWidth < 768;
-
-const frustumSize = isMobile ? 12 : 8;
 
 const camera = new THREE.OrthographicCamera(
   -8 * aspect,
@@ -156,41 +153,22 @@ const camera = new THREE.OrthographicCamera(
 
 function setupCamera() {
   const aspect = window.innerWidth / window.innerHeight;
-  const isMobile = window.innerWidth < 768;
+  const size = 8;
 
-  if (isMobile) {
-    const size = 12;
+  camera.left = -size * aspect;
+  camera.right = size * aspect;
+  camera.top = size;
+  camera.bottom = -size;
 
-    camera.left = -size * aspect;
-    camera.right = size * aspect;
-    camera.top = size;
-    camera.bottom = -size;
+  camera.position.set(15, 5.5, 5);
 
-    camera.position.set(10, 8, 8);
+  const target = new THREE.Vector3(6, 2, -5);
 
-    //VUE MOBILE (ajustable)
-    camera.lookAt(6, 1.5, -4);
-    
-    if (controls) {
-      controls.target.set(6, 1.5, -4);
-    }
+  camera.lookAt(target);
 
-  } else {
-    const size = 8;
-
-    camera.left = -size * aspect;
-    camera.right = size * aspect;
-    camera.top = size;
-    camera.bottom = -size;
-
-    camera.position.set(15, 5.5, 5);
-
-    //VUE PC (inchangé)
-    camera.lookAt(6, 2, -5);
-
-    if (controls) {
-      controls.target.set(6, 2, -5);
-    }
+  if (controls) {
+    controls.target.copy(target);
+    controls.update(); // 🔥 important
   }
 
   camera.updateProjectionMatrix();
@@ -573,14 +551,9 @@ const crystalAccessIds = new Set([
 
 const target = new THREE.Vector3(6, 2, -5);  // plus ou moins le centre de la forme (vue centré sur le centre)
 
-setupCamera();
-
-camera.lookAt(target);
-
 controls = new OrbitControls(camera, renderer.domElement);
-controls.enablePan = false;
-controls.enableZoom = false;
-controls.target.copy(target);
+
+setupCamera(); // UNE seule fois, après controls
 controls.update();
 
 // personnage
