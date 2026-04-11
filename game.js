@@ -168,7 +168,7 @@ function setupCamera() {
 
   if (controls) {
     controls.target.copy(target);
-    controls.update(); // 🔥 important
+    controls.update();
   }
 
   camera.updateProjectionMatrix();
