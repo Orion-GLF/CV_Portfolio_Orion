@@ -311,9 +311,9 @@ function createConnectionSquare(block) {
   const edges = new THREE.EdgesGeometry(geometry);
 
   const material = new THREE.LineBasicMaterial({
-    color: 0x00ffff,
+    color: 0x7fdfff, // bleu doux
     transparent: true,
-    opacity: 0.9
+    opacity: 0.1
   });
 
   const square = new THREE.LineSegments(edges, material);
@@ -329,44 +329,83 @@ function createConnectionSquare(block) {
 
 function spawnSquareParticles3D(block) {
 
-  const size = 0.5;
-  const pixelCount = 6;
+  if (!block.magicParticles) {
+    block.magicParticles = [];
 
-  const edges = [
-    [[-size, size, -size], [size, size, -size]],
-    [[size, size, -size], [size, size, size]],
-    [[size, size, size], [-size, size, size]],
-    [[-size, size, size], [-size, size, -size]],
-  ];
+    const size = 0.5;
+    const steps = 20;
 
-  edges.forEach(edge => {
-    const [start, end] = edge;
+    const edges = [
+      [[-size, size, -size], [size, size, -size]],
+      [[size, size, -size], [size, size, size]],
+      [[size, size, size], [-size, size, size]],
+      [[-size, size, size], [-size, size, -size]],
+    ];
 
-    const t = Math.random();
+    edges.forEach(edge => {
+      const [start, end] = edge;
 
-    const x = THREE.MathUtils.lerp(start[0], end[0], t);
-    const z = THREE.MathUtils.lerp(start[2], end[2], t);
+      for (let i = 0; i < steps; i++) {
+        const t = i / steps;
 
-    const particle = new THREE.Mesh(
-      new THREE.BoxGeometry(0.06, 0.06, 0.06), // ⚠️ cube, pas plane
-      new THREE.MeshBasicMaterial({
-        color: 0x00ffff,
-        transparent: true,
-        opacity: 0.9
-      })
-    );
+        const x = THREE.MathUtils.lerp(start[0], end[0], t);
+        const y = THREE.MathUtils.lerp(start[1], end[1], t);
+        const z = THREE.MathUtils.lerp(start[2], end[2], t);
 
-    particle.position.set(
-      block.x + x,
-      block.y + size + 0.02, // posé sur la surface
-      block.z + z
-    );
+        const particle = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.06, 0.06),
+          new THREE.MeshBasicMaterial({
+            color: 0x7fdfff, // bleu doux
+            transparent: true,
+            opacity: 0.5,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          })
+        );
 
-    scene.add(particle);
+        particle.position.set(
+          block.x + x,
+          block.y + y,
+          block.z + z
+        );
 
-    setTimeout(() => {
-      scene.remove(particle);
-    }, 250);
+        particle.userData = {
+          baseX: x,
+          baseY: y,
+          baseZ: z,
+          life: Math.random(),
+          speed: 0.01 + Math.random() * 0.02
+        };
+
+        scene.add(particle);
+        block.magicParticles.push(particle);
+      }
+    });
+  }
+}
+
+function updateMagicParticles() {
+
+  terrainBlocks.forEach(block => {
+
+    if (!block.magicParticles) return;
+
+    block.magicParticles.forEach(p => {
+
+      const d = p.userData;
+
+      d.life += d.speed;
+
+      const wave = Math.sin(d.life * 3);
+
+      p.position.x = block.x + d.baseX + wave * 0.03;
+      p.position.y = block.y + d.baseY + Math.sin(d.life * 2) * 0.03;
+      p.position.z = block.z + d.baseZ + Math.cos(d.life * 2) * 0.03;
+
+      p.lookAt(camera.position);
+
+      p.material.opacity = 0.5 + Math.sin(d.life * 4) * 0.3;
+    });
   });
 }
 
@@ -391,20 +430,6 @@ function updateVisualConnectionsEffects() {
     if (!blockA || !blockB) continue;
 
     const aligned = isVisuallyAligned(blockA, blockB);
-
-    if (aligned) {
-
-      if (!activeConnectionSquares[key]) {
-        const squareA = createConnectionSquare(blockA);
-        const squareB = createConnectionSquare(blockB);
-
-        scene.add(squareA);
-        scene.add(squareB);
-
-        activeConnectionSquares[key] = [squareA, squareB];
-      }
-
-    } 
     
     if (aligned) {
 
@@ -429,6 +454,17 @@ function updateVisualConnectionsEffects() {
       if (activeConnectionSquares[key]) {
 
         // STOP LES PARTICULES
+        if (blockA.magicParticles) {
+          blockA.magicParticles.forEach(p => scene.remove(p));
+          blockA.magicParticles = null;
+        }
+
+        if (blockB.magicParticles) {
+          blockB.magicParticles.forEach(p => scene.remove(p));
+          blockB.magicParticles = null;
+        }
+
+        // 🛑 STOP LES INTERVALS
         if (blockA.intervals) {
           blockA.intervals.forEach(i => clearInterval(i));
           blockA.intervals = [];
@@ -1206,6 +1242,7 @@ function animate() {
   animatePlayerBody();
   updateCvCrystal();
   updateVisualConnectionsEffects();
+  updateMagicParticles();
 
   stars.rotation.y += 0.0002;
   stars.rotation.x += 0.00005;
