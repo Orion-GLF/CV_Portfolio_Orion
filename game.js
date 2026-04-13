@@ -7,6 +7,8 @@ console.log("GAME JS V2");
 
 const scene = new THREE.Scene();
 
+const activeConnectionSquares = {};
+
 //fond dégradé
 // const skyGeo = new THREE.SphereGeometry(1000, 64, 64);
 const skyGeo = new THREE.SphereGeometry(35, 64, 64);
@@ -168,7 +170,7 @@ function setupCamera() {
 
   if (controls) {
     controls.target.copy(target);
-    controls.update();
+    controls.update(); 
   }
 
   camera.updateProjectionMatrix();
@@ -299,6 +301,153 @@ function createBlock(x, y, z) {
     y,
     z
   });
+}
+
+function createConnectionSquare(block) {
+  const size = 1.05;
+
+  const geometry = new THREE.PlaneGeometry(size, size);
+
+  const edges = new THREE.EdgesGeometry(geometry);
+
+  const material = new THREE.LineBasicMaterial({
+    color: 0x00ffff,
+    transparent: true,
+    opacity: 0.9
+  });
+
+  const square = new THREE.LineSegments(edges, material);
+
+  // position
+  square.position.set(block.x, block.y + 0.51, block.z); 
+  // 👆 légèrement au-dessus pour éviter z-fighting
+
+  // orientation (IMPORTANT)
+  square.rotation.x = -Math.PI / 2; // à plat
+
+  return square;
+}
+
+function spawnSquareParticles3D(block) {
+
+  const size = 0.5;
+  const pixelCount = 6;
+
+  const edges = [
+    [[-size, size, -size], [size, size, -size]],
+    [[size, size, -size], [size, size, size]],
+    [[size, size, size], [-size, size, size]],
+    [[-size, size, size], [-size, size, -size]],
+  ];
+
+  edges.forEach(edge => {
+    const [start, end] = edge;
+
+    const t = Math.random();
+
+    const x = THREE.MathUtils.lerp(start[0], end[0], t);
+    const z = THREE.MathUtils.lerp(start[2], end[2], t);
+
+    const particle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 0.06, 0.06), // ⚠️ cube, pas plane
+      new THREE.MeshBasicMaterial({
+        color: 0x00ffff,
+        transparent: true,
+        opacity: 0.9
+      })
+    );
+
+    particle.position.set(
+      block.x + x,
+      block.y + size + 0.02, // posé sur la surface
+      block.z + z
+    );
+
+    scene.add(particle);
+
+    setTimeout(() => {
+      scene.remove(particle);
+    }, 250);
+  });
+}
+
+function startPixelEffect(block) {
+
+  const interval = setInterval(() => {
+    spawnSquareParticles3D(block);
+  }, 120); // vitesse
+
+  // stocker pour cleanup
+  if (!block.intervals) block.intervals = [];
+  block.intervals.push(interval);
+}
+
+function updateVisualConnectionsEffects() {
+  for (const key in visualConnections) {
+    const [id1, id2] = key.split("|");
+
+    const blockA = terrainBlocks.find(b => b.id === id1);
+    const blockB = terrainBlocks.find(b => b.id === id2);
+
+    if (!blockA || !blockB) continue;
+
+    const aligned = isVisuallyAligned(blockA, blockB);
+
+    if (aligned) {
+
+      if (!activeConnectionSquares[key]) {
+        const squareA = createConnectionSquare(blockA);
+        const squareB = createConnectionSquare(blockB);
+
+        scene.add(squareA);
+        scene.add(squareB);
+
+        activeConnectionSquares[key] = [squareA, squareB];
+      }
+
+    } 
+    
+    if (aligned) {
+
+      if (!activeConnectionSquares[key]) {
+        const squareA = createConnectionSquare(blockA);
+        const squareB = createConnectionSquare(blockB);
+
+        scene.add(squareA);
+        scene.add(squareB);
+
+        activeConnectionSquares[key] = [squareA, squareB];
+      }
+
+      // 👇 AJOUT ICI
+      if (!activeConnectionSquares[key].particlesStarted) {
+        startPixelEffect(blockA);
+        startPixelEffect(blockB);
+        activeConnectionSquares[key].particlesStarted = true;
+      }
+
+    } else {
+
+      if (activeConnectionSquares[key]) {
+
+        // 🧼 STOP LES PARTICULES
+        if (blockA.intervals) {
+          blockA.intervals.forEach(i => clearInterval(i));
+          blockA.intervals = [];
+        }
+
+        if (blockB.intervals) {
+          blockB.intervals.forEach(i => clearInterval(i));
+          blockB.intervals = [];
+        }
+
+        // 🧹 supprimer les carrés
+        activeConnectionSquares[key].forEach(obj => scene.remove(obj));
+        delete activeConnectionSquares[key];
+      }
+
+    }
+  }
 }
 
 const visualConnections = {};
@@ -537,10 +686,10 @@ createBlock(9, 0, -4);
 
 //connexion entre les bloques pour bouger sur les îlots
 connectVisually("4,4,-4", "-1,3,-5"); //ilot particule <--> escalier
-connectVisually("4,4,-4", "4,0,-9"); //ilot a la fleur <--> escalier
+connectVisually("4,4,-4", "4,0,-9"); //ilot au cristal <--> escalier
 connectVisually("4,4,-4", "6,0,-4"); //boucle
 connectVisually("6,0,-4", "-1,3,-5"); //ilot particule <--> ligne du haut du carré
-connectVisually("9,0,-4", "5,0,-11"); //ilot a la fleur <--> ligne du haut du carré
+connectVisually("9,0,-4", "5,0,-10"); //ilot au cristal <--> ligne du haut du carré
 
 const crystalAccessIds = new Set([
   "4,0,-11",
@@ -1058,6 +1207,7 @@ function animate() {
   updatePlayer();
   animatePlayerBody();
   updateCvCrystal();
+  updateVisualConnectionsEffects();
 
   stars.rotation.y += 0.0002;
   stars.rotation.x += 0.00005;
