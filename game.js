@@ -320,9 +320,8 @@ function createConnectionSquare(block) {
 
   // position
   square.position.set(block.x, block.y + 0.51, block.z); 
-  // 👆 légèrement au-dessus pour éviter z-fighting
 
-  // orientation (IMPORTANT)
+  // orientation
   square.rotation.x = -Math.PI / 2; // à plat
 
   return square;
@@ -419,7 +418,6 @@ function updateVisualConnectionsEffects() {
         activeConnectionSquares[key] = [squareA, squareB];
       }
 
-      // 👇 AJOUT ICI
       if (!activeConnectionSquares[key].particlesStarted) {
         startPixelEffect(blockA);
         startPixelEffect(blockB);
@@ -430,7 +428,7 @@ function updateVisualConnectionsEffects() {
 
       if (activeConnectionSquares[key]) {
 
-        // 🧼 STOP LES PARTICULES
+        // STOP LES PARTICULES
         if (blockA.intervals) {
           blockA.intervals.forEach(i => clearInterval(i));
           blockA.intervals = [];
@@ -441,7 +439,7 @@ function updateVisualConnectionsEffects() {
           blockB.intervals = [];
         }
 
-        // 🧹 supprimer les carrés
+        // supprimer les carrés
         activeConnectionSquares[key].forEach(obj => scene.remove(obj));
         delete activeConnectionSquares[key];
       }
