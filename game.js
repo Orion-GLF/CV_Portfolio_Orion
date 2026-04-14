@@ -543,12 +543,17 @@ function isVisuallyAligned(blockA, blockB) {
   const screenA = getProjectedBlockPosition(blockA);
   const screenB = getProjectedBlockPosition(blockB);
 
-  const dx = Math.abs(screenA.x - screenB.x);
-  const dy = Math.abs(screenA.y - screenB.y);
+  const dx = screenA.x - screenB.x;
+  const dy = (screenA.y - screenB.y) * 0.7;
 
-  const threshold = 0.12; // à ajuster
+  const dist = Math.sqrt(dx * dx + dy * dy);
 
-  return dx < threshold && dy < threshold;
+  return dist < 0.06;
+
+  // const threshold = 0.09; // à ajuster
+
+  // return dist < threshold;
+  // return dx < threshold && dy < threshold;
 }
 
 function canMoveBetween(blockA, blockB) {
@@ -721,7 +726,7 @@ createBlock(9, 0, -4);
 //connexion entre les bloques pour bouger sur les îlots
 connectVisually("4,4,-4", "-1,3,-5"); //ilot particule <--> escalier
 connectVisually("4,4,-4", "4,0,-9"); //ilot au cristal <--> escalier
-connectVisually("4,4,-4", "6,0,-4"); //boucle
+// connectVisually("4,4,-4", "6,0,-4"); //boucle
 connectVisually("6,0,-4", "-1,3,-5"); //ilot particule <--> ligne du haut du carré
 connectVisually("9,0,-4", "5,0,-10"); //ilot au cristal <--> ligne du haut du carré
 
